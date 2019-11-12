@@ -45,72 +45,94 @@ app.get('/movies/:movieId', (request, response) => {
 });
 
 app.post('/movies', bodyParser.json(), (req, res) => {
+  const { title, year, imdbRating } = req.body;
   const newFilm = {
     id: uuid(),
-    title: req.body.title,
-    year: req.body.year,
-    imdbRating: req.body.imdbRating,
+    title: title,
+    year: year,
+    imdbRating: imdbRating,
   };
 
-  movies.push(newFilm);
-  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
-    if (err) throw err;
-  });
+  movies = [...movies, newFilm];
 
-  res.json(newFilm);
+  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.json(newFilm);
+    };
+  });
 });
 
-app.put('/movies/:movieId',  bodyParser.json(), (req, res) => {
-  let updatedFilm = movies.find(({ id }) => id === req.params.movieId);
+app.put('/movies/:movieId', bodyParser.json(), (req, res) => {
+  let newFilm;
 
-  if(!updatedFilm) {
-    res.status(404).send("Film is not found(");
-  };
+  movies = movies.map(film => {
+    const { id } = film;
 
-  updatedFilm = {
-    ...updatedFilm,
-    title: req.body.title,
-    year: req.body.year,
-    imdbRating: req.body.imdbRating,
-  };
+    if (id === req.params.movieId) {
+      const { title, year, imdbRating } = req.body;
 
-  movies = [...movies, updatedFilm];
+      newFilm = {
+        id,
+        title: title,
+        year: year,
+        imdbRating: imdbRating,
+      };
 
-  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
-    if (err) throw err;
+      return newFilm;
+    }
+
+    return film;
   });
 
-  res.json(updatedFilm);
+  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.json(newFilm);
+    };
+  });
+
 });
 
 app.patch('/movies/:movieId', bodyParser.json(), (req, res) => {
-  let updatedFilm = movies.find(({ id }) => id === req.params.movieId);
+  let newFilm;
 
-  if(!updatedFilm) {
-    res.status(404).send("Film is not found(");
-  };
+  movies = movies.map(film => {
+    const { id } = film;
 
-  updatedFilm = {
-    ...updatedFilm,
-    ...req.body,
-  };
+    if (id === req.params.movieId) {
+      newFilm = {
+        ...film,
+        ...req.body,
+      };
 
-  movies = [...movies, updatedFilm];
+      return newFilm;
+    }
 
-  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
-    if (err) throw err;
+    return film;
   });
 
-  res.json(updatedFilm);
+  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.json(newFilm);
+    }
+  });
 });
 
 app.delete('/movies/:movieId', (req, res) => {
-  movies.filter(({ id }) => id !== req.params.movieId);
-  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
-    if (err) throw err;
-  });
+  movies = movies.filter(({ id }) => id !== req.params.movieId);
 
-  res.sendStatus(204);
+  fs.writeFile('data.json', JSON.stringify(movies), (err) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(204);
+    }
+  });
 });
 
 app.listen(port, () => {
