@@ -157,9 +157,9 @@ class filmsModelCreator {
       }
     });
 
-    return JSON.parse(filmsData).length === updatedData.length;
+    return JSON.parse(filmsData).length !== updatedData.length;
   }
 }
 
-const filmsModel = new filmsModelCreator(MODEL_PATH);
-module.exports = filmsModel;
+const movieModel = new filmsModelCreator(MODEL_PATH);
+module.exports = movieModel;
