@@ -7,10 +7,9 @@ const uuid = require('uuid/v4');
 
 const MODEL_PATH = path.join(__dirname, '../../data.json');
 const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
 
-console.log(__dirname);
-
-class filmsModelCreator {
+class MoviesModel {
   constructor(path) {
     this.modelPath = path;
   }
@@ -27,24 +26,20 @@ class filmsModelCreator {
     return JSON.parse(filmsData).find(({ id }) => id === filmId);
   }
 
-  getFilmsTitles(films) {
-    return JSON.parse(films).map(({ title }) => title).join('\n');
-  }
+  preparedTitles(films, releaseYear) {
+    const parsedFilms = JSON.parse(films);
 
-  getTitlesByYear(releaseYear, films) {
-    return JSON.parse(films)
-        .filter(({ year }) => year === releaseYear)
-        .map(({ title }) => title).join('\n');
+    const preparedFilms = releaseYear
+      ? parsedFilms.filter(({ year }) => year === releaseYear)
+      : parsedFilms;
+
+    return preparedFilms.map(({ title }) => title).join('\n');
   }
 
   async getTitles(releaseYear) {
     const filmsData = await readFile(this.modelPath);
 
-    if(releaseYear) {
-      return this.getTitlesByYear(releaseYear, filmsData);
-    }
-
-    return this.getFilmsTitles(filmsData);
+    return this.preparedTitles(filmsData, releaseYear);
   }
 
   async postMovie(filmDetails) {
@@ -58,16 +53,17 @@ class filmsModelCreator {
       year,
     };
 
-    fs.writeFile(this.modelPath, JSON.stringify([...JSON.parse(filmsData), newMovie]), (err) => {
-      if (err) {
-          const error = {
-            statusCode: 500,
-            errorMessage: err.message,
-          };
+    writeFile(this.modelPath, JSON.stringify([...JSON.parse(filmsData), newMovie]))
+        .catch(err => {
+          if (err) {
+            const error = {
+              statusCode: 500,
+              errorMessage: err.message,
+            };
 
-          throw error;
-        }
-    });
+            throw error;
+          }
+        });
 
     return newMovie;
   }
@@ -94,16 +90,17 @@ class filmsModelCreator {
       return film;
     });
 
-      fs.writeFile(this.modelPath, JSON.stringify(newMovieData), (err) => {
-        if (err) {
-          const error = {
-            statusCode: 500,
-            errorMessage: err.message,
-          };
+      writeFile(this.modelPath, JSON.stringify(newMovieData))
+          .catch(err => {
+            if (err) {
+              const error = {
+                statusCode: 500,
+                errorMessage: err.message,
+              };
 
-          throw error;
-        };
-      });
+              throw error;
+            };
+          });
 
       return newMovie;
   }
@@ -127,16 +124,16 @@ class filmsModelCreator {
       return film;
     });
 
-    fs.writeFile(this.modelPath, JSON.stringify(newMovieData), (err) => {
-      if (err) {
-        const error = {
-          statusCode: 500,
-          errorMessage: err.message,
-        };
+    writeFile(this.modelPath, JSON.stringify(newMovieData))
+        .catch(err => {
+          if (err) {
+            const error = {
+              statusCode: 500,
+              errorMessage: err.message,
+            };
 
-        throw error;
-      };
-    });
+            throw error;
+        }});
 
     return newMovie;
   }
@@ -144,22 +141,24 @@ class filmsModelCreator {
   async deleteMovie(movieId) {
     const filmsData = await readFile(this.modelPath);
 
-    const updatedData = JSON.parse(filmsData).filter(({ id }) => id !== movieId);
+    const preparedFilmsData = JSON.parse(filmsData);
 
-    fs.writeFile(this.modelPath, JSON.stringify(updatedData), (err) => {
-      if (err) {
-        const error = {
-          statusCode: 500,
-          errorMessage: err.message,
-        };
+    const updatedData = preparedFilmsData.filter(({ id }) => id !== movieId);
 
-        throw error;
-      }
-    });
+    writeFile(this.modelPath, JSON.stringify(updatedData))
+        .catch(err => {
+          if (err) {
+            const error = {
+              statusCode: 500,
+              errorMessage: err.message,
+            };
 
-    return JSON.parse(filmsData).length !== updatedData.length;
+            throw error;
+        }});
+
+    return preparedFilmsData.length !== updatedData.length;
   }
 }
 
-const movieModel = new filmsModelCreator(MODEL_PATH);
-module.exports = movieModel;
+const moviesModel = new MoviesModel(MODEL_PATH);
+module.exports = moviesModel;

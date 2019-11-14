@@ -3,7 +3,7 @@
 const express = require('express');
 const path = require('path');
 
-const { moviesRouter } = require(path.join(__dirname, './router/movies-router'))
+const { moviesRouter } = require('./router/movies-router');
 
 const port = process.env.PORT || 5000;
 const app = express();
