@@ -2,28 +2,24 @@
 
 const express = require('express');
 const fs = require('fs');
-const bodyParser = require('body-parser');
 const uuid = require('uuid/v4');
 
-const port = 5000;
+const port = process.env.PORT || 5000;
 const app = express();
 
 let movies = JSON.parse(fs.readFileSync('data.json', 'utf8'));
 
 app.get('/movies', (request, response) => {
-  const dataToSend = [...movies].sort((a,b) => a.year - b.year);
+  const moviesToSend = [...movies].sort((a,b) => a.year - b.year);
 
-  response.json(dataToSend);
+  response.json(moviesToSend);
 });
 
 app.get('/movies/titles', (req, res) => {
   let titles = [...movies];
 
   if (req.query.year) {
-    titles = titles.filter(({year}) => year === req.query.year);
-    if (!titles.length) {
-      res.status(404).send("Movie title is not found");
-    }
+    titles = titles.filter(({ year }) => year === req.query.year);
   }
 
   titles = titles
@@ -40,14 +36,15 @@ app.get('/movies/:movieId', (request, response) => {
   if (movie) {
     response.json(movie);
   } else {
-    response.status(404).send("Oops, something went wrong");
+    response.status(404).send("Movie title is not found");
   }
 });
 
-app.post('/movies', bodyParser.json(), (req, res) => {
+app.post('/movies', express.json(), (req, res) => {
   const { title, year, imdbRating } = req.body;
+  const newFilmId = uuid();
   const newFilm = {
-    id: uuid(),
+    id: newFilmId,
     title: title,
     year: year,
     imdbRating: imdbRating,
@@ -57,6 +54,8 @@ app.post('/movies', bodyParser.json(), (req, res) => {
 
   fs.writeFile('data.json', JSON.stringify(movies), (err) => {
     if (err) {
+      movies = movies.filter(({ id }) => id !== newFilmId);
+
       res.sendStatus(500);
     } else {
       res.json(newFilm);
@@ -64,13 +63,17 @@ app.post('/movies', bodyParser.json(), (req, res) => {
   });
 });
 
-app.put('/movies/:movieId', bodyParser.json(), (req, res) => {
+app.put('/movies/:movieId', express.json(), (req, res) => {
   let newFilm;
+  let oldFilm;
+  const paramsMovieId = req.params.movieId;
 
   movies = movies.map(film => {
     const { id } = film;
 
-    if (id === req.params.movieId) {
+    if (id === paramsMovieId) {
+      oldFilm = film;
+
       const { title, year, imdbRating } = req.body;
 
       newFilm = {
@@ -88,6 +91,14 @@ app.put('/movies/:movieId', bodyParser.json(), (req, res) => {
 
   fs.writeFile('data.json', JSON.stringify(movies), (err) => {
     if (err) {
+      movies = movies.map(film => {
+        if (id === paramsMovieId) {
+          return oldFilm;
+        }
+
+        return film;
+      });
+
       res.sendStatus(500);
     } else {
       res.json(newFilm);
@@ -96,8 +107,9 @@ app.put('/movies/:movieId', bodyParser.json(), (req, res) => {
 
 });
 
-app.patch('/movies/:movieId', bodyParser.json(), (req, res) => {
+app.patch('/movies/:movieId', express.json(), (req, res) => {
   let newFilm;
+  let oldFilm;
 
   movies = movies.map(film => {
     const { id } = film;
@@ -116,6 +128,14 @@ app.patch('/movies/:movieId', bodyParser.json(), (req, res) => {
 
   fs.writeFile('data.json', JSON.stringify(movies), (err) => {
     if (err) {
+      movies = movies.map(film => {
+        if (id === paramsMovieId) {
+          return oldFilm;
+        }
+
+        return film;
+      });
+
       res.sendStatus(500);
     } else {
       res.json(newFilm);
@@ -136,5 +156,5 @@ app.delete('/movies/:movieId', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log('Server is running on port 5000!😄')
+  console.log(`Server is running on port ${port}!😄`)
 });
