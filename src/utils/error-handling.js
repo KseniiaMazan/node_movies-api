@@ -13,7 +13,17 @@ const handleApiErrors = (res) => {
   }
 };
 
+const handleReadFileErrors = (err) => {
+  const readFileError = {
+    statusCode: 500,
+    errorMessage: err.message,
+  };
+
+  throw readFileError;
+};
+
 module.exports = {
   handleModelErrors,
   handleApiErrors,
+  handleReadFileErrors,
 };

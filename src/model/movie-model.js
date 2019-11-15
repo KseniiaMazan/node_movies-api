@@ -5,6 +5,8 @@ const path = require('path');
 const { promisify } = require('util');
 const uuid = require('uuid/v4');
 
+const { handleReadFileErrors } = require('../utils/error-handling');
+
 const MODEL_PATH = path.join(__dirname, '../../data.json');
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -15,15 +17,17 @@ class MoviesModel {
   }
 
   async getFilms() {
-    const filmsData = await readFile(this.modelPath);
-
-    return JSON.parse(filmsData).sort((a, b) => Number(a.year) - Number(b.year));
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(movies => JSON.parse(movies).sort((a, b) => Number(a.year) - Number(b.year)));
   }
 
   async getFilmById(filmId) {
-    const filmsData = await readFile(this.modelPath);
-
-    return JSON.parse(filmsData).find(({ id }) => id === filmId);
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(films => (
+            JSON.parse(films).find(({ id }) => id === filmId)
+        ));
   }
 
   preparedTitles(films, releaseYear) {
@@ -37,15 +41,16 @@ class MoviesModel {
   }
 
   async getTitles(releaseYear) {
-    const filmsData = await readFile(this.modelPath);
-
-    return this.preparedTitles(filmsData, releaseYear);
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(films => (
+            this.preparedTitles(films, releaseYear)
+        ));
   }
 
   async postMovie(filmDetails) {
     const { title, imdbRating, year } = filmDetails;
 
-    const filmsData = await readFile(this.modelPath);
     const newMovie = {
       id: uuid(),
       title,
@@ -53,110 +58,126 @@ class MoviesModel {
       year,
     };
 
-    writeFile(this.modelPath, JSON.stringify([...JSON.parse(filmsData), newMovie]))
-        .catch(err => {
-          if (err) {
-            const error = {
-              statusCode: 500,
-              errorMessage: err.message,
-            };
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(movies => JSON.parse(movies))
+        .then(movies => (
+          writeFile(this.modelPath, JSON.stringify([...movies, newMovie]))
+              .catch(err => {
+                if (err) {
+                  const error = {
+                    statusCode: 500,
+                    errorMessage: err.message,
+                  };
 
-            throw error;
-          }
-        });
-
-    return newMovie;
+                  throw error;
+                }
+              })
+              .then(() => newMovie)
+        ));
   }
 
   async putMovie(filmId, filmDetails) {
-    const filmsData = await readFile(this.modelPath);
     let newMovie;
 
-    const newMovieData = JSON.parse(filmsData).map(film => {
-      if (film.id === filmId) {
-        const {title, imdbRating, year} = filmDetails;
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(movies => (
+            JSON.parse(movies).map(film => {
+              const { id } = film;
 
-        newMovie = {
-          id: filmId,
-          title,
-          imdbRating,
-          year,
-        };
+              if (id === filmId) {
+                const {title, imdbRating, year} = filmDetails;
 
-        return newMovie;
-      }
-      ;
+                newMovie = {
+                  id,
+                  title,
+                  imdbRating,
+                  year,
+                };
 
-      return film;
-    });
+                return newMovie;
+              }
+              ;
 
-      writeFile(this.modelPath, JSON.stringify(newMovieData))
-          .catch(err => {
-            if (err) {
-              const error = {
-                statusCode: 500,
-                errorMessage: err.message,
-              };
+              return film;
+            })
+        ))
+        .then(newMovies => (
+            writeFile(this.modelPath, JSON.stringify(newMovies))
+                .catch(err => {
+                  if (err) {
+                    const error = {
+                      statusCode: 500,
+                      errorMessage: err.message,
+                    };
 
-              throw error;
-            };
-          });
-
-      return newMovie;
+                    throw error;
+                  };
+                })
+                .then(() => newMovie)
+        ));
   }
 
   async patchMovie(filmId, filmDetails) {
-    const filmsData = await readFile(this.modelPath);
     let newMovie;
 
-    const newMovieData = JSON.parse(filmsData).map(film => {
-      const { id } = film;
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(movies =>  (
+          JSON.parse(movies).map(film => {
+            const { id } = film;
 
-      if (id === filmId) {
-        newMovie = {
-          ...film,
-          ...filmDetails,
-        };
+            if (id === filmId) {
+              newMovie = {
+                ...film,
+                ...filmDetails,
+              };
 
-        return newMovie;
-      };
-
-      return film;
-    });
-
-    writeFile(this.modelPath, JSON.stringify(newMovieData))
-        .catch(err => {
-          if (err) {
-            const error = {
-              statusCode: 500,
-              errorMessage: err.message,
+              return newMovie;
             };
 
-            throw error;
-        }});
+            return film;
+        })))
+        .then(newMovies => (
+            writeFile(this.modelPath, JSON.stringify(newMovies))
+                .catch(err => {
+                  if (err) {
+                    const error = {
+                      statusCode: 500,
+                      errorMessage: err.message,
+                    };
 
-    return newMovie;
+                    throw error
+                  }})
+                .then(() => newMovie)
+        ));
   }
 
   async deleteMovie(movieId) {
-    const filmsData = await readFile(this.modelPath);
+    return readFile(this.modelPath)
+        .catch(handleReadFileErrors)
+        .then(films => ({
+            preparedFilmsData: JSON.parse(films),
+        }))
+        .then(objWithFilms => {
+          objWithFilms.updatedData = objWithFilms.preparedFilmsData.filter(({ id }) => id !== movieId);
 
-    const preparedFilmsData = JSON.parse(filmsData);
+          return objWithFilms;
+        })
+        .then(objWithFilms => (
+          writeFile(this.modelPath, JSON.stringify(objWithFilms.updatedData))
+              .catch(err => {
+                if (err) {
+                  const error = {
+                    statusCode: 500,
+                    errorMessage: err.message,
+                  };
 
-    const updatedData = preparedFilmsData.filter(({ id }) => id !== movieId);
-
-    writeFile(this.modelPath, JSON.stringify(updatedData))
-        .catch(err => {
-          if (err) {
-            const error = {
-              statusCode: 500,
-              errorMessage: err.message,
-            };
-
-            throw error;
-        }});
-
-    return preparedFilmsData.length !== updatedData.length;
+                  throw error;
+                }})
+              .then(() => objWithFilms.updatedData !== objWithFilms.preparedFilmsData)
+        ));
   }
 }
 

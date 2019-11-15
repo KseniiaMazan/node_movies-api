@@ -1,14 +1,10 @@
-const assertData = (data, res) => {
-  if (!data) {
-    const err = {
-      statusCode: 404,
-      errorMessage: 'Not found',
-    }
-
-    throw err;
+const assertData = () => {
+  const err = {
+    statusCode: 404,
+    errorMessage: 'Not found',
   }
 
-  res.json(data);
+  throw err;
 };
 
 module.exports = assertData;

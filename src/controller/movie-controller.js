@@ -20,28 +20,48 @@ const getTitle = (req, res) => {
 const getMovieById = (req, res) => {
   moviesModel.getFilmById(req.params.movieId)
       .catch(handleModelErrors)
-      .then(data => assertData(data, res))
+      .then(data => {
+        if(!data) {
+          assertData();
+        } else {
+          res.json(data);
+        }})
       .catch(handleApiErrors(res));
 };
 
 const putMovie = (req, res) => {
   moviesModel.putMovie(req.params.movieId, req.body)
       .catch(handleModelErrors)
-      .then(data => assertData(data, res))
+      .then(data => {
+        if(!data) {
+          assertData();
+        } else {
+          res.json(data);
+        }})
       .catch(handleApiErrors(res));
 }
 
 const postMovie = (req, res) => {
   moviesModel.postMovie(req.body)
       .catch(handleModelErrors)
-      .then(data => res.json(data))
+      .then(data => {
+        if(!data) {
+          assertData();
+        } else {
+          res.json(data);
+        }})
       .catch(handleApiErrors(res));
 };
 
 const patchMovie = (req, res) => {
   moviesModel.patchMovie(req.params.movieId, req.body)
       .catch(handleModelErrors)
-      .then(data => assertData(data, res))
+      .then(data => {
+        if(!data) {
+          assertData();
+        } else {
+          res.json(data);
+        }})
       .catch(handleApiErrors(res));
 };
 
@@ -50,16 +70,10 @@ const deleteMovie = (req, res) => {
       .catch(handleModelErrors)
       .then(data => {
         if (!data) {
-          const error = {
-            statusCode: 404,
-            errorMessage: 'Not found(',
-          };
-
-          throw error;
-        };
-
-        res.sendStatus(204);
-      })
+          assertData();
+        } else {
+          res.sendStatus(204);
+        }})
       .catch(handleApiErrors(res));
 };
 
